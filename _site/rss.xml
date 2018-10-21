@@ -1,0 +1,593 @@
+<?xml version="1.0"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Sangjin Han</title>
+    <link>http://www.eecs.berkeley.edu/~sangjin/</link>
+    <atom:link href="http://www.eecs.berkeley.edu/~sangjin/rss.xml" rel="self" type="application/rss+xml" />
+    <description>Sangjin Han's Blog</description>
+    <language>en-us</language>
+    <pubDate>Sun, 21 Oct 2018 22:04:15 +0800</pubDate>
+    <lastBuildDate>Sun, 21 Oct 2018 22:04:15 +0800</lastBuildDate>
+ 
+    
+    <item>
+      <title>On Fair Comparison between CPU and GPU</title>
+      <link>http://www.eecs.berkeley.edu/~sangjin/2013/02/12/CPU-GPU-comparison.html</link>
+      <pubDate>Tue, 12 Feb 2013 00:00:00 +0800</pubDate>
+      <author>Sangjin Han</author>
+      <guid>http://www.eecs.berkeley.edu/~sangjin/2013/02/12/CPU-GPU-comparison</guid>
+      <description>&lt;h1 id=&quot;on-fair-comparison-between-cpu-and-gpu&quot;&gt;On Fair Comparison between CPU and GPU&lt;/h1&gt;
+
+&lt;p&gt;As a &lt;s&gt;noob&lt;/s&gt; newbie Computer Science researcher, it is always fun and 
+rewarding to watch people discussing about our research papers somewhere 
+on the Internet. Besides some obvious implications (e.g., fresh perspectives 
+from practitioners on the research subjects), it is a strong indicator that 
+my paper was not completely irrelevant junk that get published but nobody 
+really cares about it. Today, I came across a tweet thread about our
+&lt;a href=&quot;http://www.eecs.berkeley.edu/~sangjin/static/pub/nsdi2011_sslshader.pdf&quot;&gt;SSLShader&lt;/a&gt;
+work, or more specifically, about the RSA implementation on GPUs, which is 
+what I was responsible for, as a second author of the paper.
+Soon I found a somewhat depressing tweet about the paper.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;”[…] the benchmark methodology is flawed. Single threaded CPU comparison only.”&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Ugh… “flawed”. Really? I know I should not take this personal, but my heart 
+is broken. If I read this tweet at night I would have completely lost my sleep. 
+The most problematic(?) parts of the paper are as follows, but please read the 
+full paper if interested:&lt;/p&gt;
+
+&lt;p style=&quot;text-align: center&quot;&gt;
+&lt;img src=&quot;static/blog_images/2013-02-12-fig.png&quot; alt=&quot;Figure4&quot; style=&quot;width: 100%&quot; /&gt; 
+&lt;/p&gt;
+
+&lt;p style=&quot;text-align: center&quot;&gt;
+&lt;img src=&quot;static/blog_images/2013-02-12-table.png&quot; alt=&quot;Table1&quot; /&gt; 
+&lt;/p&gt;
+
+&lt;p style=&quot;text-align: center&quot;&gt;
+&lt;img src=&quot;static/blog_images/2013-02-12-text.png&quot; alt=&quot;Text&quot; /&gt;
+&lt;/p&gt;
+
+&lt;p&gt;The figure, table, and text compare the RSA performance between the GPU
+(ours) and CPU (from Intel IPP) implementations.
+The CPU numbers are from a single CPU core. Do not throw stones yet.&lt;/p&gt;
+
+&lt;p&gt;To be fair, I think the negative reaction is pretty much reasonable&lt;/p&gt;
+&lt;s&gt;(after having a 2-hour meditation)&lt;/s&gt;
+&lt;p&gt;. There are 
+a bunch of academic papers that make clearly unfair comparisons between the 
+CPU and GPU implementations, in order for their GPU implementations to look 
+shinier than actually are. If my published paper was not clear enough to avoid 
+those kinds of misunderstanding, it is primarily my fault.
+But let me defend our paper a little bit, by explaining some 
+contexts on how to make a &lt;em&gt;fair comparison&lt;/em&gt; in general and how it applied to
+our work.&lt;/p&gt;
+
+&lt;h2 id=&quot;how-to-make-fair-comparisons&quot;&gt;How to Make Fair Comparisons&lt;/h2&gt;
+
+&lt;p&gt;It is pretty much easy to find papers claiming that 
+“our GPU implementation shows an orders of magnitude speedup over CPU”. 
+But they often make a comparison 
+between &lt;em&gt;a highly optimized GPU implementation&lt;/em&gt; and &lt;em&gt;an unoptimized,
+single-core CPU implementation&lt;/em&gt;. Perhaps one can simply see our paper as 
+one of them. But trust me. It is not what it seems like.&lt;/p&gt;
+
+&lt;p&gt;Actually I am a huge fan of the ISCA 2010 paper,
+&lt;a href=&quot;http://pcl.intel-research.net/publications/isca319-lee.pdf&quot;&gt;“Debunking the 100X GPU vs. CPU Myth”&lt;/a&gt;, 
+and it was indeed a kind of guideline for our work to not repeat common 
+mistakes. Some quick takeaways from the paper are:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;100-1000x speedups are illusions. The authors found that the gap between
+a single GPU and a single multi-core CPU narrows
+down to 2.5x on average, after applying extensive optimization 
+for both CPU and GPU implementations.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;The expected speedup is highly variable depending on workloads.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;For optimal performance, an implementation must fully exploit opportunities
+provided by the underlying hardware. Many research papers tend to do this 
+for their GPU implementations, but not much for the CPU implementations.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;In summary, for a fair comparison between GPU and CPU performance for a 
+specific application, you must ensure to optimize your CPU implementation
+to the reasonably acceptable level. You should parallelize your algorithm
+to run across multiple CPU cores. The memory access should be cache-friendly
+as much as possible. Your code should not confuse the branch predictor.
+SIMD operations, such as SSE, are crucial to exploit the instruction-level
+parallelism.&lt;/p&gt;
+
+&lt;p&gt;(In my personal opinion, CPU code optimization seems to take significantly 
+ more efforts than GPU code optimization at least for embarrassingly parallel 
+ algorithms, but anyways, not very relevant for this article.)&lt;/p&gt;
+
+&lt;p&gt;Of course there are some obvious, critical mistakes made by many 
+papers, not addressed in detail in the above paper. Let me call these
+&lt;em&gt;three deadly sins&lt;/em&gt;.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;Sometimes not all parts of algorithms are completely offloadable to the GPU,
+leaving some non-parallelizable tasks for the CPU. Some papers only report
+the GPU kernel time, even if the CPU runtime cannot be completely hidden 
+with overlapping, due to dependency.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;More often, many papers assume that the input data is already on the GPU
+memory, and do not copy the output data back to the host memory.
+In reality, data transfer between host and GPU memory takes significant
+time, often more than the kernel run time itself depending on the 
+computational intensity of the algorithm.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Often it is assumed that you always have large data for enough parallelism
+for full utilization of GPU. In some &lt;em&gt;online&lt;/em&gt; applications, 
+such as network applications as in our paper, it is not always true.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;While it is not directly related to GPU, the paper
+&lt;a href=&quot;http://crd-legacy.lbl.gov/~dhbailey/dhbpapers/twelve-ways.pdf&quot;&gt;“Twelve ways to fool the masses when giving performance results on parallel computers”&lt;/a&gt;
+provides another interesting food for thought, in the general context of 
+parallel computing.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-we-did-for-a-fair-comparison&quot;&gt;What We Did for a Fair Comparison&lt;/h2&gt;
+
+&lt;p&gt;Defense time.&lt;/p&gt;
+
+&lt;h3 id=&quot;was-our-cpu-counterpart-was-optimized-enough&quot;&gt;Was our CPU counterpart was optimized enough?&lt;/h3&gt;
+
+&lt;p&gt;We tried a dozen of publicly available RSA implementations to find the
+fastest one, including our own implementation. 
+&lt;a href=&quot;http://software.intel.com/en-us/intel-ipp&quot;&gt;Intel IPP&lt;/a&gt; 
+(Integrated Performance Primitives) beat everything else, by a huge margin. 
+It is heavily optimized with SSE intrinsics by Intel experts, and our platform 
+was, not surprisingly, Intel. For instance, it ran up to three times faster
+than the OpenSSL implementations, depending on their versions (no worries,
+the latest OpenSSL versions runs much faster than it used to be).&lt;/p&gt;
+
+&lt;h3 id=&quot;why-show-the-single-core-performance&quot;&gt;Why show the single-core performance?&lt;/h3&gt;
+
+&lt;p&gt;The reason is threefold.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;RSA is simply not parallelizable, at a coarse-grained scale for CPUs. 
+Simply put, one RSA operation with a 1k-bit key requires roughly 768 modular
+multiplications of large integers, and each multiplication is dependent on 
+the result of the previous multiplication. 
+The only thing we can do is to parallelize each multiplication 
+(and this is what we do in our work). 
+To my best knowledge, this is true not only for RSA, 
+but also for any public-key algorithms based on modular exponentiation.
+It would be a great research project, if one can derive a fully 
+parallelizable public-key algorithm that still provides comparable crypto 
+strength to RSA. Seriously.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;The only coarse-grained parallelism found in RSA is from Chinese Remainder
+Theorem, which breaks an RSA operation into two independent modular
+exponentiations, thus runnable on two CPU cores. While this can reduce
+the latency of each RSA operation, note that it does not help the total
+throughput, since the total amount of work remains the same.
+Actually IPP supports for this mode, but it shows lower throughput than
+the single-core case, due to the communication cost between cores.
+Fine-grained parallelization of each modular multiplication on multiple CPU 
+cores is simply a disaster. Even too obvious to state.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;For those reasons, it is best for the CPU evaluation to run the sequential
+algorithm on individual RSA messages, on each core. We compare the
+sequential, non-parallelizable CPU implementation performance with the parallelized GPU 
+implementation performance. This is why we show the single-core performance.
+One can make a rough estimation for her own environment from our single-core 
+throughput, by considering the number of cores she has and the clock 
+frequency.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;In our paper, we clearly emphasized several times that the performance result 
+is from &lt;strong&gt;a single core&lt;/strong&gt;, not to be misunderstood as a whole CPU or a whole 
+system (our server had two hexa-core Xeon processors).
+We also state that how many CPU cores are needed to match the GPU performance.
+And finally, perhaps most importantly, we make explicit chip-level comparisons, 
+between a GPU, CPUs (as a whole), and a security processor in the Discussion
+section.&lt;/p&gt;
+
+&lt;h3 id=&quot;what-about-the-three-deadly-sins-above&quot;&gt;What about the three deadly sins above?&lt;/h3&gt;
+
+&lt;p&gt;We accounted all the CPU and GPU run time for the GPU results. They also
+include memory transfer time between CPU and GPU and the kernel launch 
+overheads.&lt;/p&gt;
+
+&lt;p&gt;Our paper does not simply say that RSA always runs faster on GPUs than CPUs.
+Instead, it clearly explains when is better to offload RSA operations to
+GPUs and when is not, and how to make a good decision dynamically, in terms of
+throughput and latency. The main system, SSLShader, opportunistically
+switch between CPU and GPU crypto operations as explained in the paper.&lt;/p&gt;
+
+&lt;p&gt;In short, &lt;strong&gt;we did our best to make fair comparisons&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;time-for-self-criticism-my-faults-in-the-paper&quot;&gt;Time for Self-Criticism: My Faults in the Paper&lt;/h2&gt;
+
+&lt;p&gt;Of course, I found that &lt;s&gt;myself&lt;/s&gt; the paper was not completely free
+from some of common mistakes. Admittedly, this is a painful, but constructive
+aspect of what I can learn from seemingly harsh comments on my research.
+Here comes the list:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;Perhaps the most critical mistake must be 
+“In our evaluation, the GPU implementation of RSA shows a factor of 22.6 
+to 31.7 improvement over the fastest CPU implementation”. IN THE ABSTRACT.
+Yikes. It should have clearly stated that the CPU result was from
+the single-core case, as done in the main text.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Our paper lacks the context described above: “why we showed the single-core
+CPU performance”.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;The paper does not explicitly say about what would be the expected 
+throughput if we run the non-parallelizable algorithm on multiple CPU cores, 
+individually. Clearly (single-core performance) * (# of cores) is the upper 
+bound, since you cannot expect super-linear speedup for running on
+independent data. However, the speedup may be significantly lower than the
+number of cores, as commonly seen in multi-core applications.
+The answer was, &lt;em&gt;it shows almost perfect linear scalability&lt;/em&gt;, since RSA
+operations have so small cache footprint that each core does not interfere
+with others. While the Table 4 implied it, the paper should have been explicit 
+about this.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;The graphs above. They should have had lines for multi-core cases, 
+&lt;a href=&quot;http://www.eecs.berkeley.edu/~sangjin/static/pub/nsdi2010_packetshader.pdf&quot;&gt;as we had done for another research project&lt;/a&gt;.
+One small excuse: please blame conferences with page limits.
+In many Computer Science research areas, including mine, conferences are
+primary venues for publication. Not journals with no page limits.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>NUSE: Networking Stack in Userspace?</title>
+      <link>http://www.eecs.berkeley.edu/~sangjin/2013/01/14/NUSE.html</link>
+      <pubDate>Mon, 14 Jan 2013 00:00:00 +0800</pubDate>
+      <author>Sangjin Han</author>
+      <guid>http://www.eecs.berkeley.edu/~sangjin/2013/01/14/NUSE</guid>
+      <description>&lt;h1 id=&quot;nuse-networking-stack-in-userspace&quot;&gt;NUSE: Networking Stack in Userspace?&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://fuse.sourceforge.net/&quot;&gt;FUSE&lt;/a&gt; (Filesystem in Userspace) allows programmers 
+to implement a custom file system in userspace. FUSE itself works as a &lt;em&gt;virtual&lt;/em&gt;
+file system in the kernel. While real file systems, such as ext4 and ReiserFS,
+perform all operations within the kernel, FUSE redirects VFS operations to
+a user-level application that actually implements a custom file system. 
+Such &lt;a href=&quot;http://fuse.sourceforge.net/doxygen/structfuse__operations.html&quot;&gt;VFS operations&lt;/a&gt;
+often 1-to-1 match  with familiar system calls, such as open, release, read,
+write, mkdir, and unlink.&lt;/p&gt;
+
+&lt;p&gt;The FUSE architecture modularizes the big picture into three players: user
+applications, FUSE applications, and the FUSE kernel module. Existing user
+applications can benefit from FUSE without any modifications. The FUSE kernel
+module routes VFS operations to a proper FUSE application, based on the
+well-defined namespace (file paths and mounting points).&lt;/p&gt;
+
+&lt;p&gt;While this abstraction layer comes at a price (frequent boundary crossing between 
+kernel and user), but in most cases it
+is not a deal breaker since the performance of a file system is typically bound
+by disk or network (for network file systems) bottlenecks. Functionality
+and flexibility do matter. There are many creative and useful file system
+implementations on top of FUSE. One intriguing example is
+&lt;a href=&quot;http://www.sr71.net/projects/gmailfs/&quot;&gt;GMailfs&lt;/a&gt;, 
+which allows you to utilize your gmail account as a free disk space. 
+This can be considered as an early prototype of cloud storage services. 
+The advantages of FUSE are huge:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;Kernel-level programming is pretty damn hard. Life is too short to be wasted
+for debugging kernel panics. FUSE effectively democratizes the file system
+programming for all user-level programmers.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;One corollary of the above is that you do not need to get stuck with the C
+programming language in the kernel. You have freedom of &lt;del&gt;religion&lt;/del&gt;
+language. With FUSE, you can implement a non-trivial file system of your own 
+in less than a few hundreds of LOC, in your favorite language.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Once you implement a custom file system, you can easily port it to other
+operating systems, as long as they also support FUSE. This is possible because
+the user-level file system implementation is not tightly coupled with
+other kernel-level subsystems, such as scheduler and virtual memory system.
+Your file system implementation is readily portable.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;The user-level isolation also helps easy deployment. You do not need to worry
+about  operating system and its version when you release your file
+system, thanks to the well-defined FUSE API.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Those advantages have brought &lt;a href=&quot;http://sourceforge.net/apps/mediawiki/fuse/index.php?title=FileSystems&quot;&gt;various file system implementations&lt;/a&gt;.
+In addition, FUSE has helped not only practionists but also researchers.
+Storage systems researchers can quickly realize their new ideas with FUSE.
+Quick prototyping allows researchers to focus on ideas, instead of hairy 
+implementation details.&lt;/p&gt;
+
+&lt;h2 id=&quot;longing-for-a-network-equivalent-to-fuse&quot;&gt;Longing for a Network Equivalent to FUSE&lt;/h2&gt;
+
+&lt;p&gt;It is often desired to customize the behavior of default networking stack
+in a programmable way, for fun, research, or practical reasons.
+A few ideas that have come up in my mind are…&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Reordering HTTP header packets to confuse firewalls.&lt;/li&gt;
+  &lt;li&gt;Marking packets of a particular TCP flow with header options.&lt;/li&gt;
+  &lt;li&gt;Opportunistic compression for TCP payloads.&lt;/li&gt;
+  &lt;li&gt;QoS based on application-layer information (e.g., prioritize text over images)&lt;/li&gt;
+  &lt;li&gt;Testing a new TCP congestion control algorithm.&lt;/li&gt;
+  &lt;li&gt;Redirecting connections based on the content (e.g., for *.html files to
+a web application server, for other files to a in-memory static HTTP server)&lt;/li&gt;
+  &lt;li&gt;Firewalling with regular expressions.&lt;/li&gt;
+  &lt;li&gt;Per-process rate-limiting.&lt;/li&gt;
+  &lt;li&gt;Implementing your own layer-3/4 protocols.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;How can we do to achieve such things? Actually, we have a bag of ingredients:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;libpcap&lt;/strong&gt; (or raw sockets) provides an interface to physical network interfaces.
+It is too low-level in most cases. For incoming packets, the kernel will
+duplicate them, so one packet will follow the default networking stack and 
+the other is redirected to the user application. This implies that this
+mechanism is &lt;em&gt;not reliable&lt;/em&gt;, as user-side packets may be dropped (buffer
+overrun) while the kernel-side packets are not. In addition, you need to
+set appropriate iptables rules to make sure you &lt;em&gt;intercept&lt;/em&gt; packets, rather
+than just observe.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;TUN/TAP devices&lt;/strong&gt; let you emulate network device drivers with software. 
+TAP devices are essentially Ethernet links, while TUN devices do not bother
+with Ethernet headers (so the basic processing unit is IP packets, not
+Ethernet frames). Those devices act as the &lt;em&gt;network side&lt;/em&gt;. What you write
+is incoming packets for the kernel. Packets the kernel transmits are what
+you read from the device. All TCP/IP processing (layer 3 and above) will be
+done as usual.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;iptables&lt;/strong&gt; performs various middlebox functionalities, such as firewall and
+NAT.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;libnetfilter_queue&lt;/strong&gt; provides functionalities for user-level applications
+to implement custom netfilter operations (in contrast to pre-defined iptables
+rules).&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Proxy servers&lt;/strong&gt; work best if what you want to do is at the application
+layer, but without modifications to existing applications. You basically
+deal with TCP streams, so you will lose any packet-level fidelity.
+Typically you redirect connections to your proxy with a iptables &lt;strong&gt;REDIRECT&lt;/strong&gt; 
+rule.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;You can also intercept libc functions or system calls. What you get is
+similar to proxy servers, while this method is a little bit trickier.
+This approach is often used to “torify” network traffic of unmodified
+applications.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Custom TCP/IP stacks&lt;/strong&gt;. &lt;a href=&quot;http://savannah.nongnu.org/projects/lwip/&quot;&gt;lwIP&lt;/a&gt;
+is perhaps the most popular one. 
+These networking stacks are mainly designed for embedded systems, 
+where size and portability are the king, making them tend to be not so 
+feature-rich.
+In my experience, unfortunately, none of those implementations were as mature as
+the Linux kernel networking stack,
+e.g., frequent TCP stall or unacceptable performance over high-latency links.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;All those solutions are very case-specific; you must be able to choose a right 
+tool to solve your problem. Getting expertise in one tool will not help for
+others, as they share little common in usage/interface. None of them provides
+a unified, portable, and clean interface as FUSE does for user-level file systems.&lt;/p&gt;
+
+&lt;p&gt;Why cannot we have an equivalent to FUSE, for networking?
+One reason would be the networking stack is arguably more complex than
+the file system by nature. The Linux TCP/IP stack consist of various protocols
+at several layers (link, network, transport, and socket layer), 
+works both as a router and an endhost, deals with various communication
+medium rather than simple block devices, and needs many functional requirements
+(filtering and tunneling). Look at the &lt;strong&gt;simplified&lt;/strong&gt; diagram of the Linux
+networking stack.&lt;/p&gt;
+
+&lt;p style=&quot;text-align: center&quot;&gt;
+&lt;a href=&quot;http://www.linuxfoundation.org/images/1/1c/Network_data_flow_through_kernel.png&quot;&gt;
+  &lt;img src=&quot;http://www.linuxfoundation.org/images/1/1c/Network_data_flow_through_kernel.png&quot; style=&quot;width: 90%&quot; /&gt;
+  http://www.linuxfoundation.org/images/1/1c/Network_data_flow_through_kernel.png
+&lt;/a&gt;
+&lt;/p&gt;
+
+&lt;p&gt;The Linux networking stack is very complex software that is being maintained
+by brilliant people, who are masters of complexity. This software is very modular, 
+but not in a unified way (e.g., the interface between Ethernet and IP is very
+different from that between IP and TCP). I argue that the lack of a clean
+abstraction for glueing modules together is the reason why we have
+only fragmented ad-hoc solutions to customize the behavior of the stack.&lt;/p&gt;
+
+&lt;p&gt;What is the consequence of not having NUSE? In academia, lots of interesting
+research ideas come out every year in the networking community. Most of them
+make solid arguments, but unfortunately only a few of them are realized making
+real impacts. I think the reasons of this is the lack of means to quickly
+prototype their ideas in a realistic environment and contribute the outcome 
+(code) to the community. In the filesystem community, many research projects
+release their result as real FUSE applications.&lt;/p&gt;
+
+&lt;p&gt;I, as an average programmer (and as a newbie researcher), would like to have 
+a simple interface exposed to user-level applications, to inject 
+my little code for customized data/control flow in the networking stack. 
+I want to do this at any location of the stack, rather than a few 
+pre-defined hooking points.
+It would be also great if the interface has the same API wherever the “hook”
+is, so I do not have to get used to a new programming interface every time.
+I want my code to run on anywhere, without tedious kernel patching or module
+building.&lt;/p&gt;
+
+&lt;p&gt;As the &lt;a href=&quot;http://www.read.cs.ucla.edu/click/click&quot;&gt;Click&lt;/a&gt; modular router opened 
+tremendous research opportunities in networking research 
+(but mostly on routers, not end-hosts), I am pretty sure NUSE will push the 
+frontiers of the computer networking research even further.
+If you are interested in doing research or writing code for NUSE,
+please let me know. I would be happy to collaborate.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Scalable Event Multiplexing: epoll vs. kqueue</title>
+      <link>http://www.eecs.berkeley.edu/~sangjin/2012/12/21/epoll-vs-kqueue.html</link>
+      <pubDate>Fri, 21 Dec 2012 00:00:00 +0800</pubDate>
+      <author>Sangjin Han</author>
+      <guid>http://www.eecs.berkeley.edu/~sangjin/2012/12/21/epoll-vs-kqueue</guid>
+      <description>&lt;h1 id=&quot;scalable-event-multiplexing-epoll-vs-kqueue&quot;&gt;Scalable Event Multiplexing: epoll vs. kqueue&lt;/h1&gt;
+
+&lt;p&gt;I like Linux much more than BSD in general, but I do want the kqueue functionality of BSD in Linux.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-is-event-multiplexing&quot;&gt;What is event multiplexing?&lt;/h2&gt;
+
+&lt;p&gt;Suppose that you have a simple web server, and there are currently two open connections (sockets). When the server receives a HTTP request from either connection, it should transmit a HTTP response to the client. But you have no idea which of the two clients will send a message first, and when. The blocking behavior of BSD Socket API means that if you invoke recv() on one connection, you will not be able to respond to a request on the other connection. This is where you need I/O multiplexing.&lt;/p&gt;
+
+&lt;p&gt;One straightforward way for I/O multiplexing is to have one process/thread for each connection, so that blocking in one connection does not affect others. In this way, you effectively delegate all the hairy scheduling/multiplexing issues to the OS kernel. This multi-threaded architecture comes with (arguably) high cost. Maintaining a large number of threads is not trivial for the kernel. Having a separate stack for each connection increases memory footprint, and thus degrading CPU cache locality.&lt;/p&gt;
+
+&lt;p&gt;How can we achieve I/O multiplexing without thread-per-connection? You can simply do busy-wait polling for each connection with non-blocking socket operations, but this is too wasteful. What we need to know is which socket becomes ready. So the OS kernel provides a separate channel between your application and the kernel, and this channel notifies when some of your sockets become ready. This is how select()/poll() works, based on &lt;em&gt;the readiness model&lt;/em&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;recap-select&quot;&gt;Recap: select()&lt;/h2&gt;
+
+&lt;p&gt;select() and poll() are very similar in the way they work. Let me quickly review how select() looks like first.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;select(int nfds, fd_set *r, fd_set *w, fd_set *e, struct timeval *timeout)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;With select(), your application needs to provide three &lt;em&gt;interest sets&lt;/em&gt;, r, w, and e. Each set is represented as a bitmap of your file descriptor. For example, if you are interested in reading from file descriptor 6, the sixth bit of r is set to 1. The call is blocked, until one or more file descriptors in the interest sets become ready, so you can perform operations on those file descriptors without blocking. Upon return, the kernel overwrites the bitmaps to specify which file descriptors are ready.&lt;/p&gt;
+
+&lt;p&gt;In terms of scalability, we can find four issues.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;Those bitmaps are fixed in size (FD_SETSIZE, usually 1,024). There are some ways to work around this limitation, though.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Since the bitmaps are overwritten by the kernel, user applications should refill the interest sets for every call.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;The user application and the kernel should scan the entire bitmaps for every call, to figure out what file descriptors belong to the interest sets and the result sets. This is especially inefficient for the result sets, since they are likely to be very sparse (i.e., only a few of file descriptors are ready at a given time).&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;The kernel should iterate over the entire interest sets to find out which file descriptors are ready, again for every call. If none of them is ready, the kernel iterates again to register an internal event handler for each socket.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;recap-poll&quot;&gt;Recap: poll()&lt;/h2&gt;
+
+&lt;p&gt;poll() is designed to address some of those issues.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;poll(struct pollfd *fds, int nfds, int timeout)
+
+struct pollfd {
+    int fd;
+    short events;
+    short revents;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;poll() does not rely on bitmap, but array of file descriptors (thus the issue #1 solved). By having separate fields for interest (events) and result (revents), the issue #2 is also solved if the user application properly maintains and re-uses the array). The issue #3 could have been fixed if poll separated the array, not the field. The last issue is inherent and unavoidable, as both select() and poll() are stateless; the kernel does not internally maintain the interest sets.&lt;/p&gt;
+
+&lt;h2 id=&quot;why-does-scalability-matter&quot;&gt;Why does scalability matter?&lt;/h2&gt;
+
+&lt;p&gt;If your network server needs to maintain a relatively small number of connections (say, a few 100s) and the connection rate is slow (again, 100s of connections per second), select() or poll() would be good enough. Maybe you do not need to even bother with event-driven programming; just stick with the multi-process/threaded architecture. If performance is not your number one concern, ease of programming and flexibility are king. Apache web server is a prime example.&lt;/p&gt;
+
+&lt;p&gt;However, if your server application is network-intensive (e.g., 1000s of concurrent connections and/or a high connection rate), you should get really serious about performance. This situation is often called &lt;a href=&quot;http://www.kegel.com/c10k.html&quot;&gt;the c10k problem&lt;/a&gt;. With select() or poll(), your network server will hardly perform any useful things but wasting precious CPU cycles under such high load.&lt;/p&gt;
+
+&lt;p&gt;Suppose that there are 10,000 concurrent connections. Typically, only a small number of file descriptors among them, say 10, are ready to read. The rest 9,990 file descriptors are copied and scanned for no reason, for every select()/poll() call.&lt;/p&gt;
+
+&lt;p&gt;As mentioned earlier, this problem comes from the fact that those select()/poll() interfaces are stateless. &lt;a href=&quot;http://static.usenix.org/event/usenix99/full_papers/banga/banga.pdf&quot;&gt;The paper&lt;/a&gt; by Banga et al, published at USENIX ATC 1999, suggested a new idea: &lt;em&gt;stateful&lt;/em&gt; interest sets. Instead of providing the entire interest set for every system call, the kernel internally maintains the interest set. Upon a decalre_interest() call, the kernel incrementally updates the interest set. The user application dispatches new events from the kernel via get_next_event().&lt;/p&gt;
+
+&lt;p&gt;Inspired by the research result, Linux and FreeBSD came up with their own implementations, epoll and kqueue, respectively. This means lack of portability, as applications based on epoll cannot be run on FreeBSD. One sad thing is that kqueue is &lt;em&gt;technically&lt;/em&gt; superior to epoll, so there is really no good reason to justify the existence of epoll.&lt;/p&gt;
+
+&lt;h2 id=&quot;epoll-in-linux&quot;&gt;epoll in Linux&lt;/h2&gt;
+
+&lt;p&gt;The epoll interface consists of three system calls:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;int epoll_create(int size);
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
+int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;epoll_ctl() and epoll_wait() essentially corresponds to the declare_interest() and get_next_event() above, respectively. epoll_create() creates a context as a file descriptor, while the paper mentioned above implicitly assumed per-process context.&lt;/p&gt;
+
+&lt;p&gt;Internally, the epoll implementation in the Linux kernel is not very different from the select()/poll() implementations. The only difference is whether it is stateful or not. This is because the design goal of them is exactly the same (event multiplexing for sockets/pipes). Refer to fs/select.c (for select and poll) and fs/eventpoll.c (for epoll) in the Linux source tree for more information.&lt;/p&gt;
+
+&lt;p&gt;You can also find some initial thoughts of Linus Torvalds on the early version of epoll &lt;a href=&quot;http://lkml.indiana.edu/hypermail/linux/kernel/0010.3/0003.html&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;kqueue-in-freebsd&quot;&gt;kqueue in FreeBSD&lt;/h2&gt;
+
+&lt;p&gt;Like epoll, kqueue also supports multiple contexts (interest sets) for each process. kqueue() performs the same thing as epoll_create(). However, the kevent() call integrates the role of epoll_ctl() (adjusting the interest set) and epoll_wait() (retrieving the events) with kevent().&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;int kqueue(void);
+int kevent(int kq, const struct kevent *changelist, int nchanges, 
+           struct kevent *eventlist, int nevents, const struct timespec *timeout);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Actually kqueue is a bit more complicated than epoll, from the view of ease of programming. This is because kqueue is designed in a more abstracted way, to achieve generality. Let us take a look at how struct kevent looks like.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;struct kevent {
+     uintptr_t       ident;          /* identifier for this event */
+     int16_t         filter;         /* filter for event */
+     uint16_t        flags;          /* general flags */
+     uint32_t        fflags;         /* filter-specific flags */
+     intptr_t        data;           /* filter-specific data */
+     void            *udata;         /* opaque user data identifier */
+ };
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;While the details of those fields are beyond the scope of this article, you may have noticed that there is no explicit file descriptor field. This is because kqueue is not designed as a mere replacement of select()/poll() for socket event multiplexing, but as a general mechanism for various types of operating system events.&lt;/p&gt;
+
+&lt;p&gt;The filter field specifies the type of kernel event. If it is either EVFILT_READ or EVFILT_WRITE, kqueue works similar to epoll. In this case, the ident field represents a file descriptor. The ident field may represent other types of identifiers, such as process ID and signal number, depending on the filter type. The details can be found in the &lt;a href=&quot;http://www.freebsd.org/cgi/man.cgi?query=kqueue&amp;amp;sektion=2&quot;&gt;man page&lt;/a&gt; or the &lt;a href=&quot;http://people.freebsd.org/~jlemon/papers/kqueue.pdf&quot;&gt;paper&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;comparison-of-epoll-and-kqueue&quot;&gt;Comparison of epoll and kqueue&lt;/h2&gt;
+
+&lt;h3 id=&quot;performance&quot;&gt;Performance&lt;/h3&gt;
+
+&lt;p&gt;In terms of performance, the epoll design has a weakness; it does not support multiple updates on the interest set in a single system call. When you have 100 file descriptors to update their status in the interest set, you have to make 100 epoll_ctl() calls. The performance degradation from the excessive system calls is significant, as explained in &lt;a href=&quot;http://www.linuxsymposium.org/archives/OLS/Reprints-2004/LinuxSymposium2004_All.pdf#page=217&quot;&gt;a paper&lt;/a&gt;. I would guess this is a legacy of the original work of Banga et al, as the  declare_interest() also supports only one update for each call. In contrast, you can specify multiple interest updates in a single kevent() call.&lt;/p&gt;
+
+&lt;h3 id=&quot;non-file-support&quot;&gt;Non-file support&lt;/h3&gt;
+
+&lt;p&gt;Another issue, which is more important in my opinion, is the limited scope of epoll. As it was designed to improve the performance of select()/epoll(), but for nothing more, epoll only works with file descriptors. What is wrong with this?&lt;/p&gt;
+
+&lt;p&gt;It is often quoted that “In Unix, everything is a file”. It is mostly true, but not always. For example, timers are not files. Signals are not files. Semaphores are not files. Processes are not files. (In Linux,) Network devices are not files. There are many things that are not files in UNIX-like operating systems. You cannot use select()/poll()/epoll for event multiplexing of those “things”. Typical network servers manage various types of resources, in addition to sockets. You would probably want monitor them with a single, unified interface, but you cannot. To work around this problem, Linux supports many supplementary system calls, such as signalfd(), eventfd(), and timerfd_create(), which transforms non-file resources to file descriptors, so that you can multiplex them with epoll(). But this does not look quite elegant… do you really want a dedicated system call for every type of resource?&lt;/p&gt;
+
+&lt;p&gt;In kqueue, the versatile struct kevent structure supports various non-file events. For example, your application can get a notification when a child process exits (with filter = EVFILT_PROC, ident = pid, and fflags = NOTE_EXIT). Even if some resources or event types are not supported by the current kernel version, those are extended in a future kernel version, without any change in the API.&lt;/p&gt;
+
+&lt;h3 id=&quot;disk-file-support&quot;&gt;disk file support&lt;/h3&gt;
+
+&lt;p&gt;The last issue is that epoll does not even support all kinds of file descriptors; select()/poll()/epoll do not work with regular (disk) files. This is because epoll has a strong assumption of &lt;em&gt;the readiness model&lt;/em&gt;; you monitor the readiness of sockets, so that subsequent IO calls on the sockets do not block. However, disk files do not fit this model, since simply they are always ready.&lt;/p&gt;
+
+&lt;p&gt;Disk I/O blocks when the data is not cached in memory, not because the client did not send a message. For disk files, &lt;em&gt;the completion notification model&lt;/em&gt; fits. In this model, you simply issue I/O operations on the disk files, and get notified when they are done. kqueue supports this approach with the EVFILT_AIO filter type, in conjunction with POSIX AIO functions, such as aio_read(). In Linux, you should simply pray that disk access would not block with high cache hit rate (surprisingly common in many network servers), or have separate threads so that disk I/O blocking does not affect network socket processing (e.g., the &lt;a href=&quot;http://www.cs.princeton.edu/~vivek/pubs/flash_usenix_99/flash.pdf&quot;&gt;FLASH&lt;/a&gt; architecture).&lt;/p&gt;
+
+&lt;p&gt;In our previous paper, &lt;a href=&quot;http://www.eecs.berkeley.edu/~sangjin/static/pub/osdi2012_megapipe.pdf&quot;&gt;MegaPipe&lt;/a&gt;, we proposed a new programming interface, which is entirely based on the completion notification model, for both disk and non-disk files.&lt;/p&gt;
+</description>
+    </item>
+    
+ 
+  </channel>
+</rss>

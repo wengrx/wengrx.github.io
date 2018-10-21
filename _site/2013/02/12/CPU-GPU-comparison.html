@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="author" content="Sangjin Han">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="/~sangjin/">
+
+    <title>On Fair Comparison between CPU and GPU</title>
+
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed for Sangjin's Blog" href="rss.xml" />
+    <link href="static/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Google Analytics -->
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-37166920-1']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+
+    <style>
+      body {
+        font-size: 15px;
+        padding-bottom: 20px;
+      }
+
+      h1 { font-size: 30px; line-height: 135%;}
+      h2 { font-size: 24px; line-height: 135%;}
+      h3 { font-size: 20px; line-height: 135%;}
+      h4 { font-size: 16px; }
+      h5 { font-size: 15px; }
+      h6 { font-size: 13px; }
+
+      hr {
+        border-top: 2px solid #e5e5e5;
+      }
+
+      p {
+        text-align: justify;
+      }
+
+      .navbar {
+        margin-bottom: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-inverse navbar-static-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <span class="navbar-brand">Sangjin Han</span>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li  >
+              <a href="index.html">Home</a>
+            </li>
+            <li  >
+              <a href="publications.html">Publications</a>
+            </li>
+            <li  class="active"  >
+              <a href="blog.html">Blog</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container">
+
+<div class="row">
+  <div class="col-md-9">
+    <small>Posted on Feb 12, 2013</small>
+    <h1 id="on-fair-comparison-between-cpu-and-gpu">On Fair Comparison between CPU and GPU</h1>
+
+<p>As a <s>noob</s> newbie Computer Science researcher, it is always fun and 
+rewarding to watch people discussing about our research papers somewhere 
+on the Internet. Besides some obvious implications (e.g., fresh perspectives 
+from practitioners on the research subjects), it is a strong indicator that 
+my paper was not completely irrelevant junk that get published but nobody 
+really cares about it. Today, I came across a tweet thread about our
+<a href="http://www.eecs.berkeley.edu/~sangjin/static/pub/nsdi2011_sslshader.pdf">SSLShader</a>
+work, or more specifically, about the RSA implementation on GPUs, which is 
+what I was responsible for, as a second author of the paper.
+Soon I found a somewhat depressing tweet about the paper.</p>
+
+<blockquote>
+  <p>”[…] the benchmark methodology is flawed. Single threaded CPU comparison only.”</p>
+</blockquote>
+
+<p>Ugh… “flawed”. Really? I know I should not take this personal, but my heart 
+is broken. If I read this tweet at night I would have completely lost my sleep. 
+The most problematic(?) parts of the paper are as follows, but please read the 
+full paper if interested:</p>
+
+<p style="text-align: center">
+<img src="static/blog_images/2013-02-12-fig.png" alt="Figure4" style="width: 100%" /> 
+</p>
+
+<p style="text-align: center">
+<img src="static/blog_images/2013-02-12-table.png" alt="Table1" /> 
+</p>
+
+<p style="text-align: center">
+<img src="static/blog_images/2013-02-12-text.png" alt="Text" />
+</p>
+
+<p>The figure, table, and text compare the RSA performance between the GPU
+(ours) and CPU (from Intel IPP) implementations.
+The CPU numbers are from a single CPU core. Do not throw stones yet.</p>
+
+<p>To be fair, I think the negative reaction is pretty much reasonable</p>
+<s>(after having a 2-hour meditation)</s>
+<p>. There are 
+a bunch of academic papers that make clearly unfair comparisons between the 
+CPU and GPU implementations, in order for their GPU implementations to look 
+shinier than actually are. If my published paper was not clear enough to avoid 
+those kinds of misunderstanding, it is primarily my fault.
+But let me defend our paper a little bit, by explaining some 
+contexts on how to make a <em>fair comparison</em> in general and how it applied to
+our work.</p>
+
+<h2 id="how-to-make-fair-comparisons">How to Make Fair Comparisons</h2>
+
+<p>It is pretty much easy to find papers claiming that 
+“our GPU implementation shows an orders of magnitude speedup over CPU”. 
+But they often make a comparison 
+between <em>a highly optimized GPU implementation</em> and <em>an unoptimized,
+single-core CPU implementation</em>. Perhaps one can simply see our paper as 
+one of them. But trust me. It is not what it seems like.</p>
+
+<p>Actually I am a huge fan of the ISCA 2010 paper,
+<a href="http://pcl.intel-research.net/publications/isca319-lee.pdf">“Debunking the 100X GPU vs. CPU Myth”</a>, 
+and it was indeed a kind of guideline for our work to not repeat common 
+mistakes. Some quick takeaways from the paper are:</p>
+
+<ul>
+  <li>
+    <p>100-1000x speedups are illusions. The authors found that the gap between
+a single GPU and a single multi-core CPU narrows
+down to 2.5x on average, after applying extensive optimization 
+for both CPU and GPU implementations.</p>
+  </li>
+  <li>
+    <p>The expected speedup is highly variable depending on workloads.</p>
+  </li>
+  <li>
+    <p>For optimal performance, an implementation must fully exploit opportunities
+provided by the underlying hardware. Many research papers tend to do this 
+for their GPU implementations, but not much for the CPU implementations.</p>
+  </li>
+</ul>
+
+<p>In summary, for a fair comparison between GPU and CPU performance for a 
+specific application, you must ensure to optimize your CPU implementation
+to the reasonably acceptable level. You should parallelize your algorithm
+to run across multiple CPU cores. The memory access should be cache-friendly
+as much as possible. Your code should not confuse the branch predictor.
+SIMD operations, such as SSE, are crucial to exploit the instruction-level
+parallelism.</p>
+
+<p>(In my personal opinion, CPU code optimization seems to take significantly 
+ more efforts than GPU code optimization at least for embarrassingly parallel 
+ algorithms, but anyways, not very relevant for this article.)</p>
+
+<p>Of course there are some obvious, critical mistakes made by many 
+papers, not addressed in detail in the above paper. Let me call these
+<em>three deadly sins</em>.</p>
+
+<ul>
+  <li>
+    <p>Sometimes not all parts of algorithms are completely offloadable to the GPU,
+leaving some non-parallelizable tasks for the CPU. Some papers only report
+the GPU kernel time, even if the CPU runtime cannot be completely hidden 
+with overlapping, due to dependency.</p>
+  </li>
+  <li>
+    <p>More often, many papers assume that the input data is already on the GPU
+memory, and do not copy the output data back to the host memory.
+In reality, data transfer between host and GPU memory takes significant
+time, often more than the kernel run time itself depending on the 
+computational intensity of the algorithm.</p>
+  </li>
+  <li>
+    <p>Often it is assumed that you always have large data for enough parallelism
+for full utilization of GPU. In some <em>online</em> applications, 
+such as network applications as in our paper, it is not always true.</p>
+  </li>
+</ul>
+
+<p>While it is not directly related to GPU, the paper
+<a href="http://crd-legacy.lbl.gov/~dhbailey/dhbpapers/twelve-ways.pdf">“Twelve ways to fool the masses when giving performance results on parallel computers”</a>
+provides another interesting food for thought, in the general context of 
+parallel computing.</p>
+
+<h2 id="what-we-did-for-a-fair-comparison">What We Did for a Fair Comparison</h2>
+
+<p>Defense time.</p>
+
+<h3 id="was-our-cpu-counterpart-was-optimized-enough">Was our CPU counterpart was optimized enough?</h3>
+
+<p>We tried a dozen of publicly available RSA implementations to find the
+fastest one, including our own implementation. 
+<a href="http://software.intel.com/en-us/intel-ipp">Intel IPP</a> 
+(Integrated Performance Primitives) beat everything else, by a huge margin. 
+It is heavily optimized with SSE intrinsics by Intel experts, and our platform 
+was, not surprisingly, Intel. For instance, it ran up to three times faster
+than the OpenSSL implementations, depending on their versions (no worries,
+the latest OpenSSL versions runs much faster than it used to be).</p>
+
+<h3 id="why-show-the-single-core-performance">Why show the single-core performance?</h3>
+
+<p>The reason is threefold.</p>
+
+<ol>
+  <li>
+    <p>RSA is simply not parallelizable, at a coarse-grained scale for CPUs. 
+Simply put, one RSA operation with a 1k-bit key requires roughly 768 modular
+multiplications of large integers, and each multiplication is dependent on 
+the result of the previous multiplication. 
+The only thing we can do is to parallelize each multiplication 
+(and this is what we do in our work). 
+To my best knowledge, this is true not only for RSA, 
+but also for any public-key algorithms based on modular exponentiation.
+It would be a great research project, if one can derive a fully 
+parallelizable public-key algorithm that still provides comparable crypto 
+strength to RSA. Seriously.</p>
+  </li>
+  <li>
+    <p>The only coarse-grained parallelism found in RSA is from Chinese Remainder
+Theorem, which breaks an RSA operation into two independent modular
+exponentiations, thus runnable on two CPU cores. While this can reduce
+the latency of each RSA operation, note that it does not help the total
+throughput, since the total amount of work remains the same.
+Actually IPP supports for this mode, but it shows lower throughput than
+the single-core case, due to the communication cost between cores.
+Fine-grained parallelization of each modular multiplication on multiple CPU 
+cores is simply a disaster. Even too obvious to state.</p>
+  </li>
+  <li>
+    <p>For those reasons, it is best for the CPU evaluation to run the sequential
+algorithm on individual RSA messages, on each core. We compare the
+sequential, non-parallelizable CPU implementation performance with the parallelized GPU 
+implementation performance. This is why we show the single-core performance.
+One can make a rough estimation for her own environment from our single-core 
+throughput, by considering the number of cores she has and the clock 
+frequency.</p>
+  </li>
+</ol>
+
+<p>In our paper, we clearly emphasized several times that the performance result 
+is from <strong>a single core</strong>, not to be misunderstood as a whole CPU or a whole 
+system (our server had two hexa-core Xeon processors).
+We also state that how many CPU cores are needed to match the GPU performance.
+And finally, perhaps most importantly, we make explicit chip-level comparisons, 
+between a GPU, CPUs (as a whole), and a security processor in the Discussion
+section.</p>
+
+<h3 id="what-about-the-three-deadly-sins-above">What about the three deadly sins above?</h3>
+
+<p>We accounted all the CPU and GPU run time for the GPU results. They also
+include memory transfer time between CPU and GPU and the kernel launch 
+overheads.</p>
+
+<p>Our paper does not simply say that RSA always runs faster on GPUs than CPUs.
+Instead, it clearly explains when is better to offload RSA operations to
+GPUs and when is not, and how to make a good decision dynamically, in terms of
+throughput and latency. The main system, SSLShader, opportunistically
+switch between CPU and GPU crypto operations as explained in the paper.</p>
+
+<p>In short, <strong>we did our best to make fair comparisons</strong>.</p>
+
+<h2 id="time-for-self-criticism-my-faults-in-the-paper">Time for Self-Criticism: My Faults in the Paper</h2>
+
+<p>Of course, I found that <s>myself</s> the paper was not completely free
+from some of common mistakes. Admittedly, this is a painful, but constructive
+aspect of what I can learn from seemingly harsh comments on my research.
+Here comes the list:</p>
+
+<ul>
+  <li>
+    <p>Perhaps the most critical mistake must be 
+“In our evaluation, the GPU implementation of RSA shows a factor of 22.6 
+to 31.7 improvement over the fastest CPU implementation”. IN THE ABSTRACT.
+Yikes. It should have clearly stated that the CPU result was from
+the single-core case, as done in the main text.</p>
+  </li>
+  <li>
+    <p>Our paper lacks the context described above: “why we showed the single-core
+CPU performance”.</p>
+  </li>
+  <li>
+    <p>The paper does not explicitly say about what would be the expected 
+throughput if we run the non-parallelizable algorithm on multiple CPU cores, 
+individually. Clearly (single-core performance) * (# of cores) is the upper 
+bound, since you cannot expect super-linear speedup for running on
+independent data. However, the speedup may be significantly lower than the
+number of cores, as commonly seen in multi-core applications.
+The answer was, <em>it shows almost perfect linear scalability</em>, since RSA
+operations have so small cache footprint that each core does not interfere
+with others. While the Table 4 implied it, the paper should have been explicit 
+about this.</p>
+  </li>
+  <li>
+    <p>The graphs above. They should have had lines for multi-core cases, 
+<a href="http://www.eecs.berkeley.edu/~sangjin/static/pub/nsdi2010_packetshader.pdf">as we had done for another research project</a>.
+One small excuse: please blame conferences with page limits.
+In many Computer Science research areas, including mine, conferences are
+primary venues for publication. Not journals with no page limits.</p>
+  </li>
+</ul>
+
+    <br>
+    <div id="disqus_thread"></div>
+    <script type="text/javascript">
+        /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+        var disqus_shortname = 'sangjinhan'; // required: replace example with your forum shortname
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+  </div>
+  <div class="col-md-3">
+    <h3>Articles</h3>
+    <ul class="nav nav-pills nav-stacked">
+      
+        <li  class="active"  >
+          <a href="/~sangjin/2013/02/12/CPU-GPU-comparison.html">
+            On Fair Comparison between CPU and GPU
+            <br>
+            <small>Feb 12, 2013</small> 
+          </a>
+        </li>
+      
+        <li  >
+          <a href="/~sangjin/2013/01/14/NUSE.html">
+            NUSE: Networking Stack in Userspace?
+            <br>
+            <small>Jan 14, 2013</small> 
+          </a>
+        </li>
+      
+        <li  >
+          <a href="/~sangjin/2012/12/21/epoll-vs-kqueue.html">
+            Scalable Event Multiplexing: epoll vs. kqueue
+            <br>
+            <small>Dec 21, 2012</small> 
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+</div>
+      <hr>
+      <small>
+        This webpage was built with
+        <a href="http://twitter.github.com/bootstrap">Bootstrap</a> and 
+        <a href="https://github.com/mojombo/jekyll">Jekyll</a>. 
+        You can find the source code 
+        <a href="https://github.com/sangjinhan/homepage">here</a>.
+        Last updated: Oct 21, 2018
+      </small>
+    </div>
+    <script src="//code.jquery.com/jquery.js"></script>
+    <script src="static/bootstrap/js/bootstrap.js"></script>
+  </body>
+</html>
+
